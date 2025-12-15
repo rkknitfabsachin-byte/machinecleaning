@@ -127,18 +127,24 @@ async function loadData() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  // 🔥 Collect all machines from full history
+  // 1️⃣ Extract Machines
   let machines = new Set();
-
   Object.values(d.history).forEach(list => {
     list.forEach(row => {
       if (row.machine) machines.add(row.machine);
     });
   });
 
-  machines = Array.from(machines).sort();
+  machines = Array.from(machines);
 
-  // 🔥 Create Machine Filter UI
+  // ⭐ NUMERIC SORT: mac.1 → mac.2 → ... → mac.22
+  machines.sort((a, b) => {
+    let na = parseInt(a.replace(/[^0-9]/g, ""));
+    let nb = parseInt(b.replace(/[^0-9]/g, ""));
+    return na - nb;
+  });
+
+  // 2️⃣ Machine Filter UI
   let filterUI = `
     <div style="margin:20px;">
       <label style="font-size:18px;font-weight:600;">Machine Filter:</label>
@@ -150,15 +156,18 @@ async function loadData() {
         ${machines.map(m => `<option value="${m}">${m}</option>`).join("")}
       </select>
     </div>
+    <div id="dashboard"></div>
   `;
 
-  content.innerHTML += filterUI;
+  content.innerHTML = filterUI;
 
   document.getElementById("machineFilter").addEventListener("change", () => {
     renderDashboard();
   });
 
-  // ---- state ----
+  const dashboardArea = document.getElementById("dashboard");
+
+  // PAGINATION state
   const pages = {};
   const pageFieldMap = {
     h_cleaning: [],
@@ -169,27 +178,24 @@ async function loadData() {
     h_repair: ["repair_note"]
   };
 
-  function getFilteredHistory(list) {
-    let selected = document.getElementById("machineFilter").value;
-    if (selected === "all") return list;
-    return list.filter(r => r.machine === selected);
+  function getFiltered(list) {
+    const sel = document.getElementById("machineFilter").value;
+    return sel === "all" ? list : list.filter(r => r.machine === sel);
   }
 
-  // ---- RENDER PAGE ----
   function renderPage(key) {
     const container = document.getElementById(key + "_list");
     const p = pages[key];
-
     const start = p.page * 10;
     const end = start + 10;
 
     const slice = p.data.slice(start, end);
-    const extraFields = pageFieldMap[key];
+    const extra = pageFieldMap[key];
 
     container.innerHTML = slice.map(h => {
-      let extra = "";
-      extraFields.forEach(f => extra += ` — ${h[f]}`);
-      return `<div>• ${h.machine} — ${h.timestamp}${extra}</div>`;
+      let extraInfo = "";
+      extra.forEach(f => extraInfo += ` — ${h[f]}`);
+      return `<div>• ${h.machine} — ${h.timestamp}${extraInfo}</div>`;
     }).join("");
 
     if (!slice.length) {
@@ -197,7 +203,7 @@ async function loadData() {
     }
   }
 
-  // ---- Section Renderer ----
+  // Section builder
   function section(title, latest, historyData, fields, key) {
     pages[key] = { page: 0, data: historyData };
 
@@ -222,83 +228,77 @@ async function loadData() {
       </div>
     `;
 
-    content.innerHTML += html;
+    dashboardArea.innerHTML += html;
 
     renderPage(key);
   }
 
-  // ---- TOGGLE ----
+  // TOGGLE
   window.toggleHistory = function(id) {
-    let x = document.getElementById(id);
-    x.style.display = x.style.display === "block" ? "none" : "block";
-  }
+    let el = document.getElementById(id);
+    el.style.display = el.style.display === "block" ? "none" : "block";
+  };
 
-  // ---- Pagination ----
-  window.nextPage = function(key) { pages[key].page++; renderPage(key); }
-  window.prevPage = function(key) { if (pages[key].page > 0) pages[key].page--; renderPage(key); }
+  // PAGINATION
+  window.nextPage = function(key) { pages[key].page++; renderPage(key); };
+  window.prevPage = function(key) { if (pages[key].page > 0) pages[key].page--; renderPage(key); };
 
-  // ---- COMPLETE DASHBOARD ----
+  // 🔥 MAIN RENDER FUNCTION (filter-friendly)
   function renderDashboard() {
-    // Clear everything except filter
-    content.innerHTML = content.innerHTML.split("</select>")[0] + "</select></div>";
+    dashboardArea.innerHTML = "";
 
-    let selected = document.getElementById("machineFilter").value;
+    const sel = document.getElementById("machineFilter").value;
 
     function pickLatest(list) {
-      list = getFilteredHistory(list);
-      return list.length ? list[0] : null;
+      const f = getFiltered(list);
+      return f.length ? f[0] : null;
     }
 
-    // CLEANING
+    // Sections
     section("🧼 Cleaning",
       pickLatest(d.history.cleaning),
-      getFilteredHistory(d.history.cleaning),
+      getFiltered(d.history.cleaning),
       [["Machine", "machine"], ["Last Cleaned", "timestamp"]],
       "h_cleaning"
     );
 
-    // NEEDLE
     section("🪡 Needle Change",
       pickLatest(d.history.needle_change),
-      getFilteredHistory(d.history.needle_change),
+      getFiltered(d.history.needle_change),
       [["Machine", "machine"], ["Last Change", "timestamp"], ["Needle", "needle"]],
       "h_needle"
     );
 
-    // SINKER
     section("⚙ Sinker Change",
       pickLatest(d.history.sinker_change),
-      getFilteredHistory(d.history.sinker_change),
+      getFiltered(d.history.sinker_change),
       [["Machine", "machine"], ["Last Change", "timestamp"], ["Sinker", "sinker"]],
       "h_sinker"
     );
 
-    // BELT
     section("📦 Belt Change",
       pickLatest(d.history.belt_change),
-      getFilteredHistory(d.history.belt_change),
+      getFiltered(d.history.belt_change),
       [["Machine", "machine"], ["Last Change", "timestamp"], ["Belt", "belt"]],
       "h_belt"
     );
 
-    // OIL
     section("🛢 Oil Change",
       pickLatest(d.history.oil_change),
-      getFilteredHistory(d.history.oil_change),
+      getFiltered(d.history.oil_change),
       [["Machine", "machine"], ["Last Change", "timestamp"]],
       "h_oil"
     );
 
-    // REPAIR
     section("🛠 Repair",
       pickLatest(d.history.repair),
-      getFilteredHistory(d.history.repair),
+      getFiltered(d.history.repair),
       [["Machine", "machine"], ["Last Repair", "timestamp"], ["Note", "repair_note"]],
       "h_repair"
     );
 
-    // ---- FOOTER ----
-    content.innerHTML += `
+    // Footer
+    dashboardArea.innerHTML += `
       <div class="footer">
         <b>Dashboard ko Update karne ke liye Ramesh Ya Pappu ko Call karen</b>
         <div class="call">Ramesh: <a href="tel:">Number Pending</a></div>
@@ -312,5 +312,6 @@ async function loadData() {
 
 loadData();
 </script>
+
 </body>
 </html>
