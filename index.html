@@ -76,6 +76,20 @@
       animation: fadeIn 0.3s ease;
     }
 
+    .pagination {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .page-btn {
+      background: #dadade;
+      padding: 6px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
     .footer {
       margin: 40px 20px 20px;
       padding: 20px;
@@ -113,7 +127,12 @@ async function loadData() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  function section(title, latest, historyData, fields, key) {
+  // Pagination state
+  const pages = {};
+
+  function section(title, latest, historyData, fields, key, showFieldsForHistory = []) {
+    pages[key] = { page: 0, data: historyData };
+
     let html = `
       <div class="section-title">${title}</div>
       <div class="card">
@@ -124,81 +143,105 @@ async function loadData() {
         <div class="history-btn" onclick="toggleHistory('${key}')">Show Full History</div>
 
         <div class="history" id="${key}">
-          ${historyData.length
-            ? historyData.map(h =>
-                `<div>• ${h.machine} — ${h.timestamp}</div>`
-              ).join("")
-            : "No history available"}
+          <div id="${key}_list"></div>
+          
+          <div class="pagination">
+            <div class="page-btn" onclick="prevPage('${key}')">Prev</div>
+            <div class="page-btn" onclick="nextPage('${key}')">Next</div>
+          </div>
         </div>
       </div>
     `;
+
     content.innerHTML += html;
+
+    renderPage(key, showFieldsForHistory);
   }
 
-  section("🧼 Cleaning",
-    d.cleaning,
-    d.history.cleaning,
-    [
-      ["Machine", "machine"],
-      ["Last Cleaned", "timestamp"]
-    ],
+  function renderPage(key, fields) {
+    const container = document.getElementById(key + "_list");
+    const p = pages[key];
+
+    const start = p.page * 10;
+    const end = start + 10;
+
+    const slice = p.data.slice(start, end);
+
+    container.innerHTML = slice
+      .map(h => {
+        let extra = "";
+        fields.forEach(f => {
+          extra += ` — ${h[f]}`;
+        });
+        return `<div>• ${h.machine} — ${h.timestamp}${extra}</div>`;
+      })
+      .join("");
+
+    if (!slice.length) {
+      container.innerHTML = "<div>No more records</div>";
+    }
+  }
+
+  function toggleHistory(id) {
+    let x = document.getElementById(id);
+    x.style.display = x.style.display === "block" ? "none" : "block";
+  }
+
+  window.nextPage = function(key) {
+    pages[key].page++;
+    renderPage(key, pageFieldMap[key]);
+  }
+
+  window.prevPage = function(key) {
+    if (pages[key].page > 0) pages[key].page--;
+    renderPage(key, pageFieldMap[key]);
+  }
+
+  const pageFieldMap = {
+    h_cleaning: [],
+    h_needle: ["needle"],
+    h_sinker: ["sinker"],
+    h_belt: ["belt"],
+    h_oil: [],
+    h_repair: ["repair_note"]
+  };
+
+  // Sections
+  section("🧼 Cleaning", d.cleaning, d.history.cleaning,
+    [["Machine", "machine"], ["Last Cleaned", "timestamp"]],
     "h_cleaning"
   );
 
-  section("🪡 Needle Change",
-    d.needle_change,
-    d.history.needle_change,
-    [
-      ["Machine", "machine"],
-      ["Last Change", "timestamp"],
-      ["Needle", "needle"]
-    ],
-    "h_needle"
+  section("🪡 Needle Change", d.needle_change, d.history.needle_change,
+    [["Machine", "machine"], ["Last Change", "timestamp"], ["Needle", "needle"]],
+    "h_needle",
+    ["needle"]
   );
 
-  section("⚙ Sinker Change",
-    d.sinker_change,
-    d.history.sinker_change,
-    [
-      ["Machine", "machine"],
-      ["Last Change", "timestamp"],
-      ["Sinker", "sinker"]
-    ],
-    "h_sinker"
+  section("⚙ Sinker Change", d.sinker_change, d.history.sinker_change,
+    [["Machine", "machine"], ["Last Change", "timestamp"], ["Sinker", "sinker"]],
+    "h_sinker",
+    ["sinker"]
   );
 
-  section("📦 Belt Change",
-    d.belt_change,
-    d.history.belt_change,
-    [
-      ["Machine", "machine"],
-      ["Last Change", "timestamp"],
-      ["Belt", "belt"]
-    ],
-    "h_belt"
+  section("📦 Belt Change", d.belt_change, d.history.belt_change,
+    [["Machine", "machine"], ["Last Change", "timestamp"], ["Belt", "belt"]],
+    "h_belt",
+    ["belt"]
   );
 
-  section("🛢 Oil Change",
-    d.oil_change,
-    d.history.oil_change,
-    [
-      ["Machine", "machine"],
-      ["Last Change", "timestamp"]
-    ],
+  section("🛢 Oil Change", d.oil_change, d.history.oil_change,
+    [["Machine", "machine"], ["Last Change", "timestamp"]],
     "h_oil"
   );
 
-  section("🛠 Repair",
-    d.repair,
-    d.history.repair,
-    [
-      ["Machine", "machine"],
-      ["Last Repair", "timestamp"],
-      ["Note", "repair_note"]
-    ],
-    "h_repair"
+  section("🛠 Repair", d.repair, d.history.repair,
+    [["Machine", "machine"], ["Last Repair", "timestamp"], ["Note", "repair_note"]],
+    "h_repair",
+    ["repair_note"]
   );
 
+  // Footer
   content.innerHTML += `
     <div class="footer">
       <b>Dashboard ko Update karne ke liye Ramesh Ya Pappu ko Call karen</b>
@@ -206,11 +249,6 @@ async function loadData() {
       <div class="call">Pappu: <a href="tel:+917087011675">+91 70870 11675</a></div>
     </div>
   `;
-}
-
-function toggleHistory(id) {
-  let x = document.getElementById(id);
-  x.style.display = x.style.display === "block" ? "none" : "block";
 }
 
 loadData();
