@@ -10,7 +10,7 @@
       margin: 0;
       font-family: 'Inter', sans-serif;
       background: #f5f5f7;
-      padding-bottom: 50px;
+      padding-bottom: 80px;
     }
 
     .topbar {
@@ -60,7 +60,6 @@
 
     .value {
       font-weight: 600;
-      color: #000;
       text-align: right;
     }
 
@@ -74,9 +73,7 @@
       text-align: center;
       transition: 0.2s;
     }
-    .history-btn:hover {
-      background: #dcdce2;
-    }
+    .history-btn:hover { background: #dcdce2; }
 
     .history {
       margin-top: 10px;
@@ -84,6 +81,27 @@
       font-size: 15px;
       display: none;
       animation: fadeIn 0.3s ease;
+    }
+
+    /* Footer */
+    .footer {
+      margin: 40px 20px 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      font-size: 16px;
+    }
+
+    .call {
+      margin-top: 10px;
+      font-size: 18px;
+    }
+
+    .call a {
+      text-decoration: none;
+      color: #0066ff;
+      font-weight: 700;
     }
   </style>
 </head>
@@ -96,97 +114,55 @@
 
 <script>
 async function loadData() {
-  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwe-FN8rssNPD9sv7yLI3QHZMCr5bknm5NtxHdrvRH5_6kkdE5IghIphFwVawlhPpV0/exec";  // ← PUT YOUR URL HERE
+
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwe-FN8rssNPD9sv7yLI3QHZMCr5bknm5NtxHdrvRH5_6kkdE5IghIphFwVawlhPpV0/exec";
+
   const res = await fetch(WEBAPP_URL);
   const d = await res.json();
 
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  // Date formatter
-  function fmt(dateStr) {
-    if (!dateStr) return "—";
-    let d = new Date(dateStr);
-    let dd = String(d.getDate()).padStart(2, "0");
-    let mm = String(d.getMonth() + 1).padStart(2, "0");
-    let yyyy = d.getFullYear();
-    let time = d.toLocaleTimeString("en-GB");
-    return `${dd}/${mm}/${yyyy} ${time}`;
-  }
-
-  // Render section
-  function section(title, latest, historyData, fields, processKey) {
+  // Render each process section
+  function section(title, latest, historyData, fields, key) {
     let html = `
       <div class="section-title">${title}</div>
       <div class="card">
         ${fields.map(f =>
-          `<div class="row"><span class="key">${f[0]}:</span><span class="value">${latest ? fmt(latest[f[1]]) : "—"}</span></div>`
+          `<div class="row"><span class="key">${f[0]}:</span><span class="value">${latest ? latest[f[1]] : "—"}</span></div>`
         ).join("")}
 
-        <div class="history-btn" onclick="toggleHistory('${processKey}')">
-          Show Full History
-        </div>
+        <div class="history-btn" onclick="toggleHistory('${key}')">Show Full History</div>
 
-        <div class="history" id="${processKey}">
+        <div class="history" id="${key}">
           ${
-            historyData.length > 0
-              ? historyData.map(h => `<div>• ${fmt(h.timestamp)}</div>`).join("")
-              : "<div>No history available</div>"
+            historyData.length
+            ? historyData.map(h => `<div>• ${h.timestamp}</div>`).join("")
+            : "No history available"
           }
         </div>
       </div>
     `;
-
     content.innerHTML += html;
   }
 
-  // FULL HISTORY SECTION DATA
-  const history = d.history;
+  section("🧼 Cleaning", d.cleaning, d.history.cleaning, [["Last Cleaned", "timestamp"]], "h_cleaning");
+  section("🪡 Needle Change", d.needle_change, d.history.needle_change, [["Last Change", "timestamp"], ["Needle", "needle"]], "h_needle");
+  section("⚙ Sinker Change", d.sinker_change, d.history.sinker_change, [["Last Change", "timestamp"], ["Sinker", "sinker"]], "h_sinker");
+  section("📦 Belt Change", d.belt_change, d.history.belt_change, [["Last Change", "timestamp"], ["Belt", "belt"]], "h_belt");
+  section("🛢 Oil Change", d.oil_change, d.history.oil_change, [["Last Change", "timestamp"]], "h_oil");
+  section("🛠 Repair", d.repair, d.history.repair, [["Last Repair", "timestamp"], ["Note", "repair_note"]], "h_repair");
 
-  section("🧼 Cleaning",
-    d.cleaning,
-    history.cleaning,
-    [["Last Cleaned", "timestamp"]],
-    "h_cleaning"
-  );
-
-  section("🪡 Needle Change",
-    d.needle_change,
-    history.needle_change,
-    [["Last Change", "timestamp"], ["Needle", "needle"]],
-    "h_needle"
-  );
-
-  section("⚙ Sinker Change",
-    d.sinker_change,
-    history.sinker_change,
-    [["Last Change", "timestamp"], ["Sinker", "sinker"]],
-    "h_sinker"
-  );
-
-  section("📦 Belt Change",
-    d.belt_change,
-    history.belt_change,
-    [["Last Change", "timestamp"], ["Belt", "belt"]],
-    "h_belt"
-  );
-
-  section("🛢 Oil Change",
-    d.oil_change,
-    history.oil_change,
-    [["Last Change", "timestamp"]],
-    "h_oil"
-  );
-
-  section("🛠 Repair",
-    d.repair,
-    history.repair,
-    [["Last Repair", "timestamp"], ["Note", "repair_note"]],
-    "h_repair"
-  );
+  // Footer
+  content.innerHTML += `
+    <div class="footer">
+      <b>Dashboard ko Update karne ke liye Ramesh Ya Pappu ko Call karen</b>
+      <div class="call">Ramesh: <a href="tel:">Number Pending</a></div>
+      <div class="call">Pappu: <a href="tel:+917087011675">+91 70870 11675</a></div>
+    </div>
+  `;
 }
 
-// Toggle history section
 function toggleHistory(id) {
   let x = document.getElementById(id);
   x.style.display = x.style.display === "block" ? "none" : "block";
