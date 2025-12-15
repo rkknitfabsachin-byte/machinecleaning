@@ -63,6 +63,28 @@
       color: #000;
       text-align: right;
     }
+
+    .history-btn {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #e9e9ee;
+      border-radius: 12px;
+      font-size: 15px;
+      cursor: pointer;
+      text-align: center;
+      transition: 0.2s;
+    }
+    .history-btn:hover {
+      background: #dcdce2;
+    }
+
+    .history {
+      margin-top: 10px;
+      padding-left: 10px;
+      font-size: 15px;
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
   </style>
 </head>
 
@@ -74,50 +96,100 @@
 
 <script>
 async function loadData() {
-
-  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwe-FN8rssNPD9sv7yLI3QHZMCr5bknm5NtxHdrvRH5_6kkdE5IghIphFwVawlhPpV0/exec";   // ← CHANGE THIS
-
+  const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwe-FN8rssNPD9sv7yLI3QHZMCr5bknm5NtxHdrvRH5_6kkdE5IghIphFwVawlhPpV0/exec";  // ← PUT YOUR URL HERE
   const res = await fetch(WEBAPP_URL);
   const d = await res.json();
 
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  function section(title, obj, fields) {
+  // Date formatter
+  function fmt(dateStr) {
+    if (!dateStr) return "—";
+    let d = new Date(dateStr);
+    let dd = String(d.getDate()).padStart(2, "0");
+    let mm = String(d.getMonth() + 1).padStart(2, "0");
+    let yyyy = d.getFullYear();
+    let time = d.toLocaleTimeString("en-GB");
+    return `${dd}/${mm}/${yyyy} ${time}`;
+  }
+
+  // Render section
+  function section(title, latest, historyData, fields, processKey) {
     let html = `
       <div class="section-title">${title}</div>
       <div class="card">
         ${fields.map(f =>
-          `<div class="row"><span class="key">${f[0]}:</span><span class="value">${obj ? (obj[f[1]] || "—") : "—"}</span></div>`
+          `<div class="row"><span class="key">${f[0]}:</span><span class="value">${latest ? fmt(latest[f[1]]) : "—"}</span></div>`
         ).join("")}
+
+        <div class="history-btn" onclick="toggleHistory('${processKey}')">
+          Show Full History
+        </div>
+
+        <div class="history" id="${processKey}">
+          ${
+            historyData.length > 0
+              ? historyData.map(h => `<div>• ${fmt(h.timestamp)}</div>`).join("")
+              : "<div>No history available</div>"
+          }
+        </div>
       </div>
     `;
+
     content.innerHTML += html;
   }
 
+  // FULL HISTORY SECTION DATA
+  const history = d.history;
+
   section("🧼 Cleaning",
     d.cleaning,
-    [["Machine", "machine"], ["Last Cleaned", "timestamp"]]);
+    history.cleaning,
+    [["Last Cleaned", "timestamp"]],
+    "h_cleaning"
+  );
 
   section("🪡 Needle Change",
     d.needle_change,
-    [["Machine", "machine"], ["Date", "timestamp"], ["Needle", "needle"]]);
+    history.needle_change,
+    [["Last Change", "timestamp"], ["Needle", "needle"]],
+    "h_needle"
+  );
 
   section("⚙ Sinker Change",
     d.sinker_change,
-    [["Machine", "machine"], ["Date", "timestamp"], ["Sinker", "sinker"]]);
+    history.sinker_change,
+    [["Last Change", "timestamp"], ["Sinker", "sinker"]],
+    "h_sinker"
+  );
 
   section("📦 Belt Change",
     d.belt_change,
-    [["Machine", "machine"], ["Date", "timestamp"], ["Belt", "belt"]]);
+    history.belt_change,
+    [["Last Change", "timestamp"], ["Belt", "belt"]],
+    "h_belt"
+  );
 
   section("🛢 Oil Change",
     d.oil_change,
-    [["Machine", "machine"], ["Date", "timestamp"]]);
+    history.oil_change,
+    [["Last Change", "timestamp"]],
+    "h_oil"
+  );
 
   section("🛠 Repair",
     d.repair,
-    [["Machine", "machine"], ["Date", "timestamp"], ["Repair Note", "repair_note"]]);
+    history.repair,
+    [["Last Repair", "timestamp"], ["Note", "repair_note"]],
+    "h_repair"
+  );
+}
+
+// Toggle history section
+function toggleHistory(id) {
+  let x = document.getElementById(id);
+  x.style.display = x.style.display === "block" ? "none" : "block";
 }
 
 loadData();
