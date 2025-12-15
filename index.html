@@ -127,10 +127,17 @@ async function loadData() {
   const content = document.getElementById("content");
   content.innerHTML = "";
 
-  // Pagination state
   const pages = {};
+  const pageFieldMap = {
+    h_cleaning: [],
+    h_needle: ["needle"],
+    h_sinker: ["sinker"],
+    h_belt: ["belt"],
+    h_oil: [],
+    h_repair: ["repair_note"]
+  };
 
-  function section(title, latest, historyData, fields, key, showFieldsForHistory = []) {
+  function section(title, latest, historyData, fields, key) {
     pages[key] = { page: 0, data: historyData };
 
     let html = `
@@ -144,7 +151,7 @@ async function loadData() {
 
         <div class="history" id="${key}">
           <div id="${key}_list"></div>
-          
+
           <div class="pagination">
             <div class="page-btn" onclick="prevPage('${key}')">Prev</div>
             <div class="page-btn" onclick="nextPage('${key}')">Next</div>
@@ -155,58 +162,51 @@ async function loadData() {
 
     content.innerHTML += html;
 
-    renderPage(key, showFieldsForHistory);
+    renderPage(key);
   }
 
-  function renderPage(key, fields) {
+  function renderPage(key) {
     const container = document.getElementById(key + "_list");
     const p = pages[key];
 
     const start = p.page * 10;
     const end = start + 10;
-
     const slice = p.data.slice(start, end);
 
-    container.innerHTML = slice
-      .map(h => {
-        let extra = "";
-        fields.forEach(f => {
-          extra += ` — ${h[f]}`;
-        });
-        return `<div>• ${h.machine} — ${h.timestamp}${extra}</div>`;
-      })
-      .join("");
+    const extraFields = pageFieldMap[key];
 
-    if (!slice.length) {
+    container.innerHTML = slice.map(h => {
+      let extra = "";
+      extraFields.forEach(f => {
+        extra += ` — ${h[f]}`;
+      });
+      return `<div>• ${h.machine} — ${h.timestamp}${extra}</div>`;
+    }).join("");
+
+    if (slice.length === 0) {
       container.innerHTML = "<div>No more records</div>";
     }
   }
 
-  function toggleHistory(id) {
+  // IMPORTANT FIX 🚀 (Expose globally)
+  window.toggleHistory = function(id) {
     let x = document.getElementById(id);
     x.style.display = x.style.display === "block" ? "none" : "block";
   }
 
   window.nextPage = function(key) {
     pages[key].page++;
-    renderPage(key, pageFieldMap[key]);
+    renderPage(key);
   }
 
   window.prevPage = function(key) {
-    if (pages[key].page > 0) pages[key].page--;
-    renderPage(key, pageFieldMap[key]);
+    if (pages[key].page > 0) {
+      pages[key].page--;
+    }
+    renderPage(key);
   }
 
-  const pageFieldMap = {
-    h_cleaning: [],
-    h_needle: ["needle"],
-    h_sinker: ["sinker"],
-    h_belt: ["belt"],
-    h_oil: [],
-    h_repair: ["repair_note"]
-  };
-
-  // Sections
+  // ---- Render Sections ----
   section("🧼 Cleaning", d.cleaning, d.history.cleaning,
     [["Machine", "machine"], ["Last Cleaned", "timestamp"]],
     "h_cleaning"
@@ -214,20 +214,17 @@ async function loadData() {
 
   section("🪡 Needle Change", d.needle_change, d.history.needle_change,
     [["Machine", "machine"], ["Last Change", "timestamp"], ["Needle", "needle"]],
-    "h_needle",
-    ["needle"]
+    "h_needle"
   );
 
   section("⚙ Sinker Change", d.sinker_change, d.history.sinker_change,
     [["Machine", "machine"], ["Last Change", "timestamp"], ["Sinker", "sinker"]],
-    "h_sinker",
-    ["sinker"]
+    "h_sinker"
   );
 
   section("📦 Belt Change", d.belt_change, d.history.belt_change,
     [["Machine", "machine"], ["Last Change", "timestamp"], ["Belt", "belt"]],
-    "h_belt",
-    ["belt"]
+    "h_belt"
   );
 
   section("🛢 Oil Change", d.oil_change, d.history.oil_change,
@@ -237,8 +234,7 @@ async function loadData() {
 
   section("🛠 Repair", d.repair, d.history.repair,
     [["Machine", "machine"], ["Last Repair", "timestamp"], ["Note", "repair_note"]],
-    "h_repair",
-    ["repair_note"]
+    "h_repair"
   );
 
   // Footer
@@ -253,6 +249,5 @@ async function loadData() {
 
 loadData();
 </script>
-
 </body>
 </html>
